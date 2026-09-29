@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 import { axes, canChartModel, chartPositions, hasCompleteStats } from "@/lib/compare";
 import { searchModels } from "@/lib/search";
 import { createTab, restoreTabs, type ComparisonTab } from "@/lib/tabs";
+import { restoreDemoTabs } from "@/lib/demo-tabs";
 import { apiKeyStorage, loadCatalog, loadInitialCatalog } from "@/lib/browser-catalog";
 import { ApiKeyModal } from "./api-key-modal";
 import { modelColor, Radar } from "./radar";
@@ -14,6 +15,7 @@ import type { Catalog, Model } from "@/lib/models";
 
 const storageKey = (source: Catalog["source"]) => `konaimi:models:${source}:v1`;
 const tabsKey = (source: Catalog["source"]) => `konaimi:tabs:${source}:v1`;
+const demoMigrationKey = "konaimi:demo:three:v1";
 
 const showValue = (model: Model, key: (typeof axes)[number]["key"]) => {
   const value = model[key];
@@ -41,21 +43,20 @@ export function Comparison() {
   const showCatalog = (data: Catalog) => {
     let savedTabs: string | null = null;
     let oldSelection: string | null = null;
+    let migrateDemo = false;
     try {
       savedTabs = localStorage.getItem(tabsKey(data.source));
       oldSelection = localStorage.getItem(storageKey(data.source));
+      migrateDemo = localStorage.getItem(demoMigrationKey) !== "done";
     } catch {}
-    const restored = restoreTabs(savedTabs, oldSelection, data.source === "demo" ? data.models.slice(0, 3).map((model) => model.id) : []);
-    if (data.source === "demo") {
-      const ids = new Set(data.models.map((model) => model.id));
-      const hadOldModels = restored.tabs.some((tab) => tab.modelIds.some((id) => !ids.has(id)));
-      restored.tabs = restored.tabs.map((tab) => ({
-        ...tab,
-        modelIds: tab.modelIds.filter((id) => ids.has(id)),
-      }));
-      if (hadOldModels && restored.tabs.every((tab) => tab.modelIds.length === 0)) {
-        restored.tabs[0].modelIds = data.models.slice(0, 3).map((model) => model.id);
-      }
+    const restored = data.source === "demo"
+      ? restoreDemoTabs(savedTabs, oldSelection, data.models.map((model) => model.id), migrateDemo)
+      : restoreTabs(savedTabs, oldSelection);
+    if (data.source === "demo" && migrateDemo) {
+      try {
+        localStorage.setItem(tabsKey("demo"), JSON.stringify(restored));
+        localStorage.setItem(demoMigrationKey, "done");
+      } catch {}
     }
     setTabs(restored.tabs);
     setActiveTabId(restored.activeTabId);
@@ -114,12 +115,6 @@ export function Comparison() {
     setTabs((current) => current.map((tab) => tab.id === activeTabId ? { ...tab, modelIds: update(tab.modelIds) } : tab));
   };
 
-  const selectThreeDemoModels = () => {
-    if (!catalog) return;
-    const demoIds = catalog.models.map((model) => model.id);
-    updateSelection((ids) => [...new Set([...ids, ...demoIds])].slice(0, 3));
-  };
-
   const addTab = () => {
     const tab = createTab([], tabs);
     setTabs((current) => [...current, tab]);
@@ -164,7 +159,7 @@ export function Comparison() {
         {ready && <button className="tab-add" onClick={addTab} aria-label="New comparison" title="New comparison">+</button>}
       </nav>
 
-      {catalog?.source === "demo" && <div className="notice demo-notice"><strong>DEMO MODE</strong><span>Real model names; illustrative, fixed scores and costs, not measured data.</span>{selected.length < 3 && <button onClick={selectThreeDemoModels}>Compare 3 models</button>}<button onClick={() => setKeyModalOpen(true)}>Add your API key</button></div>}
+      {catalog?.source === "demo" && <div className="notice demo-notice"><strong>DEMO MODE</strong><span>Real model names; illustrative, fixed scores and costs, not measured data.</span><button onClick={() => setKeyModalOpen(true)}>Add your API key</button></div>}
       {catalog?.source === "live" && <div className="key-management"><span>Using your own Artificial Analysis key</span><button onClick={forgetKey}>Forget key</button></div>}
       {catalog?.stale && <div className="notice"><strong>OLD DATA</strong><span>Latest refresh failed; showing the last complete model list.</span></div>}
       {error && <div className="notice error-notice" role="alert"><strong>DATA ERROR</strong><span>{error}</span><button onClick={() => window.location.reload()}>Try again</button></div>}

@@ -7,7 +7,7 @@ import { Search } from "lucide-react";
 import { axes, canChartModel, chartPositions, hasCompleteStats } from "@/lib/compare";
 import { searchModels } from "@/lib/search";
 import { createTab, restoreTabs, type ComparisonTab } from "@/lib/tabs";
-import { apiKeyStorage, loadCatalog } from "@/lib/browser-catalog";
+import { apiKeyStorage, loadCatalog, loadInitialCatalog } from "@/lib/browser-catalog";
 import { ApiKeyModal } from "./api-key-modal";
 import { modelColor, Radar } from "./radar";
 import type { Catalog, Model } from "@/lib/models";
@@ -64,14 +64,12 @@ export function Comparison() {
 
   useEffect(() => {
     let active = true;
-    loadCatalog().then(async (demo) => {
+    let key: string | null = null;
+    try { key = localStorage.getItem(apiKeyStorage); } catch {}
+    loadInitialCatalog(key).then(({ catalog: initial, keyFailed }) => {
       if (!active) return;
-      showCatalog(demo);
-      const key = localStorage.getItem(apiKeyStorage);
-      if (key) {
-        try { const live = await loadCatalog(key); if (active) showCatalog(live); }
-        catch { if (active) setError("Your saved API key could not load models. Enter it again."); }
-      }
+      showCatalog(initial);
+      if (keyFailed) setError("Your saved API key could not load models. Enter it again.");
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : "Could not load models.");
     });
@@ -138,7 +136,7 @@ export function Comparison() {
 
   return (
     <>
-    <main className="app-shell" inert={keyModalOpen}>
+    <main className="app-shell" inert={keyModalOpen || (!ready && !error)}>
       <header className="site-header">
         <Link href="/" className="brand" aria-label="Konaimi home"><span className="brand-mark"><span className="brand-mark-letter">K</span></span><span>KON<span className="brand-ai">AI</span>MI<span className="brand-period">.</span></span></Link>
         <span className="header-tag">MODEL COMPARISON</span>
@@ -213,6 +211,7 @@ export function Comparison() {
 
       <footer className="footer">{catalog?.source === "live" ? <>Data: <a href="https://artificialanalysis.ai/" target="_blank" rel="noreferrer">Artificial Analysis ↗</a> · Index v{catalog.indexVersion ?? "?"} · Updated {new Date(catalog.updatedAt).toLocaleDateString()}</> : "Real model names · Illustrative estimates, not measured scores or costs"}</footer>
     </main>
+    {!ready && !error && <div className="startup-screen" role="status"><span className="brand-mark"><span className="brand-mark-letter">K</span></span><span>Loading models…</span></div>}
     {keyModalOpen && createPortal(<ApiKeyModal onSubmit={submitKey} onClose={() => setKeyModalOpen(false)} />, document.body)}
     </>
   );

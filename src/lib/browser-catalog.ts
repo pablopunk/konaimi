@@ -16,3 +16,11 @@ export async function loadCatalog(key?: string): Promise<Catalog> {
   }
   return await response.json() as Catalog;
 }
+
+export async function loadInitialCatalog(key: string | null): Promise<{ catalog: Catalog; keyFailed: boolean }> {
+  if (key) {
+    try { return { catalog: await loadCatalog(key), keyFailed: false }; }
+    catch { return { catalog: await loadCatalog(), keyFailed: true }; }
+  }
+  return { catalog: await loadCatalog(), keyFailed: false };
+}

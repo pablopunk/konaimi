@@ -19,6 +19,8 @@ const showValue = (model: Model, key: (typeof axes)[number]["key"]) => {
   const value = model[key];
   if (value === null) return "No data";
   if (key === "costPerTask") return `$${value.toFixed(value < 1 ? 3 : 2)}`;
+  if (key === "outputSpeed") return `${value.toFixed(1)} tok/s`;
+  if (key === "contextWindow") return `${new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(value)} tokens`;
   return value.toFixed(1);
 };
 
@@ -188,8 +190,8 @@ export function Comparison() {
                 return <article className="player-card" key={id} style={{ "--card-accent": modelColor(index) } as React.CSSProperties}>
                   <div className="card-top"><span className="player-number">{String(index + 1).padStart(2, "0")}</span><button className="remove-button" onClick={() => updateSelection((ids) => ids.filter((item) => item !== id))} aria-label={`Remove ${model?.name ?? "unavailable model"}`}>×</button></div>
                   <div className="card-identity"><small>{model?.creator ?? "UNAVAILABLE"}</small><h3>{model?.name ?? "Model no longer listed"}</h3></div>
-                   {model ? <div className="stat-list">{axes.map((axis) => <div className="stat-row" key={axis.key}><span>{axis.name}<small>{catalog?.source === "demo" ? "Illustrative estimate" : axis.subtitle}</small></span><strong>{showValue(model, axis.key)}</strong></div>)}</div> : <p className="quiet">This saved model is not in the latest data. You can remove it above.</p>}
-                  {model && !hasCompleteStats(model) && <div className="card-note">{missingStats(model)}: no score in the API; {canChartModel(model) ? "drawn at 0 on the chart, not measured." : "this model cannot be charted."}</div>}
+                   {model ? <div className="stat-list">{axes.map((axis) => <div className="stat-row" key={axis.key}><span>{axis.name}<small>{catalog?.source === "demo" && axis.key !== "contextWindow" ? "Illustrative estimate" : axis.subtitle}</small></span><strong>{showValue(model, axis.key)}</strong></div>)}</div> : <p className="quiet">This saved model is not in the latest data. You can remove it above.</p>}
+                   {model && !hasCompleteStats(model) && <div className="card-note">{missingStats(model)}: no data available; {canChartModel(model) ? "drawn at 0 on the chart, not measured." : "this model cannot be charted."}</div>}
                 </article>;
               })}
             </div>}
@@ -204,7 +206,7 @@ export function Comparison() {
           </div>
           <div className="chart-foot">
              {catalog?.source === "live" ? <span className="chart-source">Source: <a href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noreferrer">Artificial Analysis</a> · Intelligence Index v{catalog.indexVersion ?? "?"} · {new Date(catalog.updatedAt).toLocaleDateString()}</span> : <span className="chart-source">Illustrative demo · Fixed September 2026 estimates · Not measured scores</span>}
-            <span className="legend-marker" /> Farther from the center is better on every axis: lower cost per task reaches farther out. Values are relative to the selected models; missing Coding or Agentic scores are drawn at 0, not measured.
+             <span className="legend-marker" /> Farther from the center is better on every axis: lower cost per task reaches farther out. Values are relative to the selected models; missing stats are drawn at 0, not measured. Context sizes come from <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer">OpenRouter</a> when an exact model match exists.
           </div>
         </section>
       </div>

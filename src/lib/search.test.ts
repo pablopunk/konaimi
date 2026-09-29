@@ -4,7 +4,7 @@ import { searchModels } from "./search";
 import type { Model } from "./models";
 
 const model = (name: string, creator = "Meta"): Model => ({
-  id: name, name, creator, intelligence: 40, coding: 40, agentic: 40, costPerTask: 1,
+  id: name, name, creator, intelligence: 40, coding: 40, agentic: 40, costPerTask: 1, outputSpeed: 80, contextWindow: 128000,
 });
 
 const models = [

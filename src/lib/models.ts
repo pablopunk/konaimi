@@ -6,6 +6,8 @@ export type Model = {
   coding: number | null;
   agentic: number | null;
   costPerTask: number | null;
+  outputSpeed: number | null;
+  contextWindow: number | null;
 };
 
 export type Catalog = {
@@ -27,6 +29,7 @@ export function parseModel(value: unknown): Model | null {
   const costs = (row.artificial_analysis_intelligence_index_cost ?? {}) as Record<string, unknown>;
   const task = (costs.cost_per_task ?? {}) as Record<string, unknown>;
   const creator = (row.model_creator ?? {}) as Record<string, unknown>;
+  const performance = (row.performance ?? {}) as Record<string, unknown>;
 
   return {
     id: row.id,
@@ -36,5 +39,7 @@ export function parseModel(value: unknown): Model | null {
     coding: numberOrNull(evaluations.artificial_analysis_coding_index),
     agentic: numberOrNull(evaluations.artificial_analysis_agentic_index),
     costPerTask: numberOrNull(task.total_cost),
+    outputSpeed: numberOrNull(performance.median_output_tokens_per_second),
+    contextWindow: numberOrNull(row.context_window_tokens),
   };
 }

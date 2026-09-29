@@ -4,7 +4,7 @@ import { canChartModel, chartPositions, hasCompleteStats } from "./compare";
 import type { Model } from "./models";
 
 const makeModel = (id: string, intelligence: number, costPerTask: number): Model => ({
-  id, name: id, creator: "Test", intelligence, coding: 40, agentic: 40, costPerTask,
+  id, name: id, creator: "Test", intelligence, coding: 40, agentic: 40, costPerTask, outputSpeed: 80, contextWindow: 128000,
 });
 
 test("small differences stay small, and lower task cost extends farther", () => {
@@ -47,4 +47,14 @@ test("zero cost remains valid without an infinite radius", () => {
   const positions = chartPositions([makeModel("a", 50, 0), makeModel("b", 50, 1)]);
   assert.equal(positions.a.costPerTask, 80);
   assert.equal(positions.b.costPerTask, 20);
+});
+
+test("speed and context are relative, and missing measurements stay missing", () => {
+  const fast = makeModel("fast", 50, 1);
+  const slow = { ...makeModel("slow", 50, 1), outputSpeed: 40, contextWindow: 64000 };
+  const positions = chartPositions([fast, slow]);
+  assert.ok(positions.fast.outputSpeed > positions.slow.outputSpeed);
+  assert.ok(positions.fast.contextWindow > positions.slow.contextWindow);
+  assert.equal(hasCompleteStats({ ...fast, contextWindow: null }), false);
+  assert.equal(chartPositions([fast, { ...slow, contextWindow: null }]).slow.contextWindow, 0);
 });

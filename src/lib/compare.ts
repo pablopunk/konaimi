@@ -5,6 +5,8 @@ export const axes = [
   { key: "coding", name: "Coding", subtitle: "AA Coding Index" },
   { key: "agentic", name: "Agentic", subtitle: "AA Agentic Index" },
   { key: "costPerTask", name: "Cheap", subtitle: "Cost per task" },
+  { key: "outputSpeed", name: "Speed", subtitle: "Output tokens / sec" },
+  { key: "contextWindow", name: "Context", subtitle: "OpenRouter context" },
 ] as const;
 
 export type Axis = (typeof axes)[number]["key"];
@@ -22,7 +24,9 @@ const median = (numbers: number[]): number => {
 };
 
 const axisValue = (value: number, axis: Axis): number => {
-  return axis === "costPerTask" ? -Math.log2(Math.max(value, 0.001)) : value;
+  if (axis === "costPerTask") return -Math.log2(Math.max(value, 0.001));
+  if (axis === "outputSpeed" || axis === "contextWindow") return Math.log2(Math.max(value, 1));
+  return value;
 };
 
 export function chartPositions(models: Model[]): Record<string, Record<Axis, number>> {
@@ -39,7 +43,7 @@ export function chartPositions(models: Model[]): Record<string, Record<Axis, num
     axes.map(({ key }) => {
       const value = model[key];
       if (value === null) return [key, 0];
-      const steps = key === "costPerTask" ? 10 : 2;
+       const steps = key === "costPerTask" ? 10 : key === "outputSpeed" ? 18 : key === "contextWindow" ? 12 : 2;
       return [key, 50 + Math.max(-30, Math.min(30, (axisValue(value, key) - centers[key]) * steps))];
     }),
   )])) as Record<string, Record<Axis, number>>;

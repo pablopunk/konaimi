@@ -11,11 +11,14 @@ test("keeps separately listed thinking levels and maps Free API fields", () => {
       artificial_analysis_agentic_index: 46,
     },
     artificial_analysis_intelligence_index_cost: { cost_per_task: { total_cost: 1.25 } },
+    performance: { median_output_tokens_per_second: 72.5 },
   };
   const max = parseModel({ ...base, id: "max-id", name: "Example (max)" });
   const medium = parseModel({ ...base, id: "medium-id", name: "Example (medium)" });
   assert.equal(max?.costPerTask, 1.25);
   assert.equal(max?.coding, 48);
+  assert.equal(max?.outputSpeed, 72.5);
+  assert.equal(max?.contextWindow, null);
   assert.notEqual(max?.id, medium?.id);
 });
 
@@ -24,5 +27,7 @@ test("missing scores remain missing, not zero", () => {
   assert.equal(model?.intelligence, 0);
   assert.equal(model?.agentic, null);
   assert.equal(model?.costPerTask, null);
+  assert.equal(model?.outputSpeed, null);
+  assert.equal(model?.contextWindow, null);
   assert.equal(parseModel({ name: "No id" }), null);
 });

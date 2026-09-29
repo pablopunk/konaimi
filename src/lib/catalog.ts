@@ -1,5 +1,6 @@
 import "server-only";
 import { parseModel, type Catalog } from "./models";
+import { contextLookupName, contextWindows } from "./context-windows";
 
 const endpoint = "https://artificialanalysis.ai/api/v2/language/models/free";
 
@@ -25,7 +26,9 @@ export async function fetchCatalog(key: string): Promise<Catalog> {
     models.push(...result.data.map(parseModel).filter((model) => model !== null));
     if (pagination.has_more === false) {
       if (!models.length) throw new Error("Empty model list");
-      return { source: "live", updatedAt: new Date().toISOString(), indexVersion: version, models };
+      const windows = await contextWindows().catch(() => new Map<string, number>());
+      return { source: "live", updatedAt: new Date().toISOString(), indexVersion: version,
+        models: models.map((model) => ({ ...model, contextWindow: model.contextWindow ?? windows.get(contextLookupName(model)) ?? null })) };
     }
     if (pagination.has_more !== true) throw new Error("Incomplete pagination");
   }

@@ -18,9 +18,16 @@ const centerX = 210;
 const centerY = 185;
 const radius = 113;
 const point = (index: number, value: number) => {
-  const angle = -Math.PI / 2 + index * Math.PI / 2;
+  const angle = -Math.PI / 2 + index * 2 * Math.PI / axes.length;
   const distance = radius * value / 100;
   return `${centerX + Math.cos(angle) * distance},${centerY + Math.sin(angle) * distance}`;
+};
+
+const labelPosition = (index: number) => {
+  const angle = -Math.PI / 2 + index * 2 * Math.PI / axes.length;
+  const cosine = Math.cos(angle);
+  return { x: centerX + cosine * 145, y: centerY + Math.sin(angle) * 145,
+    anchor: Math.abs(cosine) < .2 ? "middle" : cosine > 0 ? "start" : "end" } as const;
 };
 
 export function Radar({ models, positions, demo = false }: Props) {
@@ -39,13 +46,14 @@ export function Radar({ models, positions, demo = false }: Props) {
       {[20, 40, 60, 80].map((level) => (
         <polygon key={level} points={axes.map((_, index) => point(index, level)).join(" ")} fill="none" stroke="#42504b" strokeWidth="1" />
       ))}
-      {axes.map((axis, index) => (
-        <g key={axis.key}>
+      {axes.map((axis, index) => {
+        const label = labelPosition(index);
+        return <g key={axis.key}>
           <line x1={centerX} y1={centerY} x2={point(index, 80).split(",")[0]} y2={point(index, 80).split(",")[1]} stroke="#42504b" />
-          <text x={centerX + [0, 140, 0, -140][index]} y={centerY + [-131, 5, 142, 5][index]} textAnchor="middle" className="axis-label">{axis.name}</text>
-          <text x={centerX + [0, 140, 0, -140][index]} y={centerY + [-113, 23, 160, 23][index]} textAnchor="middle" className="axis-subtitle">{demo ? "Illustrative estimate" : axis.subtitle}</text>
+          <text x={label.x} y={label.y} textAnchor={label.anchor} className="axis-label">{axis.name}</text>
+          <text x={label.x} y={label.y + 15} textAnchor={label.anchor} className="axis-subtitle">{axis.key === "contextWindow" ? "tokens" : axis.key === "outputSpeed" ? "tok/s" : demo ? "Estimate" : axis.subtitle}</text>
         </g>
-      ))}
+      })}
       {models.map((model, index) => {
         const values = positions[model.id];
         if (!values) return null;

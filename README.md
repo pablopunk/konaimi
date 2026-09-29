@@ -6,6 +6,12 @@ The six chart axes are Intelligence, Coding, Agentic, Cheap (inverse cost per ta
 
 Artificial Analysis requires attribution and restricts Free API use to internal use. Only use your own key and data in line with your agreement. Do not publish or share live results without permission.
 
+## Screenshot
+
+![Konaimi demo comparison of Claude Opus 5, Claude Sonnet 5, GPT-5.6 Sol, and Gemini 3.8 Flash; scores, costs, and speeds are illustrative estimates, not measurements](docs/screenshots/comparison.png)
+
+This demo image compares Claude Opus 5, Claude Sonnet 5, GPT-5.6 Sol, and Gemini 3.8 Flash. Scores, costs, and speeds are **illustrative estimates**, not benchmark results. Context sizes are from [OpenRouter](https://openrouter.ai/models). To refresh it, start the app locally and run `npm run screenshots -- http://127.0.0.1:3000`.
+
 ## Start
 
 ```sh

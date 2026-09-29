@@ -169,7 +169,7 @@ export function Comparison() {
       {catalog?.stale && <div className="notice"><strong>OLD DATA</strong><span>Latest refresh failed; showing the last complete model list.</span></div>}
       {error && <div className="notice error-notice" role="alert"><strong>DATA ERROR</strong><span>{error}</span><button onClick={() => window.location.reload()}>Try again</button></div>}
 
-      <div className="workspace">
+      <div className={`workspace ${selected.length >= 4 ? "many-models" : ""}`}>
         <div className="sidebar">
         <section className="panel select-panel" aria-label="Select models">
           <div className="panel-heading"><h2>Models</h2><span className="small-label">{selectedIds.length} SELECTED</span></div>

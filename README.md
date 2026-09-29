@@ -28,6 +28,10 @@ Visit `http://localhost:3000`. Without an API key, the app uses **clearly marked
 
 With the app running and `agent-browser` installed, run `npm run screenshots -- http://127.0.0.1:3000` to refresh the screenshots and their captions from current live data.
 
+## Deployment
+
+The `main` branch of [pablopunk/konaimi](https://github.com/pablopunk/konaimi) is linked to the Vercel project `konaimi`. Pushes to `main` deploy to [konaimi.pablopunk.com](https://konaimi.pablopunk.com); other branches get preview deployments. Vercel Authentication protects the production domain, deployment URLs, and previews. The Artificial Analysis API key is set only for Production, so previews use fictional demo data. Do not add the key to GitHub or Preview environment variables.
+
 ## Data and access
 
 The server requests all pages of the [Artificial Analysis Free language-model API](https://artificialanalysis.ai/data-api/docs#getLanguageModelsFree), refreshes cached data about every six hours, and keeps the last complete in-process snapshot if a later refresh fails. Named comparison tabs and their model IDs are stored in your browser, separately for demo and live data. Double-click a tab name to rename it. No sign-in or database is used.

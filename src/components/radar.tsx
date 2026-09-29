@@ -11,6 +11,7 @@ export const modelColor = (index: number): string => firstColors[index] ??
 type Props = {
   models: Model[];
   positions: Record<string, Record<Axis, number>>;
+  demo?: boolean;
 };
 
 const centerX = 210;
@@ -22,7 +23,7 @@ const point = (index: number, value: number) => {
   return `${centerX + Math.cos(angle) * distance},${centerY + Math.sin(angle) * distance}`;
 };
 
-export function Radar({ models, positions }: Props) {
+export function Radar({ models, positions, demo = false }: Props) {
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const focusedId = hoveredId ?? pinnedId;
@@ -42,7 +43,7 @@ export function Radar({ models, positions }: Props) {
         <g key={axis.key}>
           <line x1={centerX} y1={centerY} x2={point(index, 80).split(",")[0]} y2={point(index, 80).split(",")[1]} stroke="#42504b" />
           <text x={centerX + [0, 140, 0, -140][index]} y={centerY + [-131, 5, 142, 5][index]} textAnchor="middle" className="axis-label">{axis.name}</text>
-          <text x={centerX + [0, 140, 0, -140][index]} y={centerY + [-113, 23, 160, 23][index]} textAnchor="middle" className="axis-subtitle">{axis.subtitle}</text>
+          <text x={centerX + [0, 140, 0, -140][index]} y={centerY + [-113, 23, 160, 23][index]} textAnchor="middle" className="axis-subtitle">{demo ? "Illustrative estimate" : axis.subtitle}</text>
         </g>
       ))}
       {models.map((model, index) => {

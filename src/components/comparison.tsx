@@ -43,7 +43,18 @@ export function Comparison() {
       savedTabs = localStorage.getItem(tabsKey(data.source));
       oldSelection = localStorage.getItem(storageKey(data.source));
     } catch {}
-    const restored = restoreTabs(savedTabs, oldSelection);
+    const restored = restoreTabs(savedTabs, oldSelection, data.source === "demo" ? data.models.slice(0, 2).map((model) => model.id) : []);
+    if (data.source === "demo") {
+      const ids = new Set(data.models.map((model) => model.id));
+      const hadOldModels = restored.tabs.some((tab) => tab.modelIds.some((id) => !ids.has(id)));
+      restored.tabs = restored.tabs.map((tab) => ({
+        ...tab,
+        modelIds: tab.modelIds.filter((id) => ids.has(id)),
+      }));
+      if (hadOldModels && restored.tabs.every((tab) => tab.modelIds.length === 0)) {
+        restored.tabs[0].modelIds = data.models.slice(0, 2).map((model) => model.id);
+      }
+    }
     setTabs(restored.tabs);
     setActiveTabId(restored.activeTabId);
     setCatalog(data);
@@ -147,7 +158,7 @@ export function Comparison() {
         {ready && <button className="tab-add" onClick={addTab} aria-label="New comparison" title="New comparison">+</button>}
       </nav>
 
-      {catalog?.source === "demo" && <div className="notice demo-notice"><strong>DEMO MODE</strong><span>These are made-up models and numbers.</span><button onClick={() => setKeyModalOpen(true)}>Add your API key</button></div>}
+      {catalog?.source === "demo" && <div className="notice demo-notice"><strong>DEMO MODE</strong><span>Real model names; illustrative, fixed scores and costs, not measured data.</span><button onClick={() => setKeyModalOpen(true)}>Add your API key</button></div>}
       {catalog?.source === "live" && <div className="key-management"><span>Using your own Artificial Analysis key</span><button onClick={forgetKey}>Forget key</button></div>}
       {catalog?.stale && <div className="notice"><strong>OLD DATA</strong><span>Latest refresh failed; showing the last complete model list.</span></div>}
       {error && <div className="notice error-notice" role="alert"><strong>DATA ERROR</strong><span>{error}</span><button onClick={() => window.location.reload()}>Try again</button></div>}
@@ -164,7 +175,7 @@ export function Comparison() {
             {catalog && available.map((model) => (
               <button className="model-option" key={model.id} onClick={() => add(model.id)} role="listitem">
                 <span><strong>{model.name}</strong><small>{model.creator}</small></span>
-                <span className="model-option-action"><small>{model.intelligence === null ? "No score" : `Intelligence ${model.intelligence.toFixed(1)}`}</small><span className="add-icon" aria-hidden="true">+</span></span>
+                 <span className="model-option-action"><small>{model.intelligence === null ? "No score" : `Intelligence ${model.intelligence.toFixed(1)}`}</small><span className="add-icon" aria-hidden="true">+</span></span>
               </button>
             ))}
           </div>
@@ -179,7 +190,7 @@ export function Comparison() {
                 return <article className="player-card" key={id} style={{ "--card-accent": modelColor(index) } as React.CSSProperties}>
                   <div className="card-top"><span className="player-number">{String(index + 1).padStart(2, "0")}</span><button className="remove-button" onClick={() => updateSelection((ids) => ids.filter((item) => item !== id))} aria-label={`Remove ${model?.name ?? "unavailable model"}`}>×</button></div>
                   <div className="card-identity"><small>{model?.creator ?? "UNAVAILABLE"}</small><h3>{model?.name ?? "Model no longer listed"}</h3></div>
-                  {model ? <div className="stat-list">{axes.map((axis) => <div className="stat-row" key={axis.key}><span>{axis.name}<small>{axis.subtitle}</small></span><strong>{showValue(model, axis.key)}</strong></div>)}</div> : <p className="quiet">This saved model is not in the latest data. You can remove it above.</p>}
+                   {model ? <div className="stat-list">{axes.map((axis) => <div className="stat-row" key={axis.key}><span>{axis.name}<small>{catalog?.source === "demo" ? "Illustrative estimate" : axis.subtitle}</small></span><strong>{showValue(model, axis.key)}</strong></div>)}</div> : <p className="quiet">This saved model is not in the latest data. You can remove it above.</p>}
                   {model && !hasCompleteStats(model) && <div className="card-note">{missingStats(model)}: no score in the API; {canChartModel(model) ? "drawn at 0 on the chart, not measured." : "this model cannot be charted."}</div>}
                 </article>;
               })}
@@ -190,17 +201,17 @@ export function Comparison() {
         <section className="panel chart-panel" aria-label="Comparison chart">
           <div className="panel-heading"><h2>Comparison</h2><span className="small-label">FARTHER OUT = BETTER</span></div>
           <div className="chart-stage">
-            {chartable.length >= 2 ? <Radar key={activeTabId} models={selected} positions={positions} /> :
+             {chartable.length >= 2 ? <Radar key={activeTabId} models={selected} positions={positions} demo={catalog?.source === "demo"} /> :
               <div className="chart-empty"><div className="empty-symbol">◇</div><span>Select two models with Intelligence and cost data.</span></div>}
           </div>
           <div className="chart-foot">
-            {catalog?.source === "live" && <span className="chart-source">Source: <a href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noreferrer">Artificial Analysis</a> · Intelligence Index v{catalog.indexVersion ?? "?"} · {new Date(catalog.updatedAt).toLocaleDateString()}</span>}
+             {catalog?.source === "live" ? <span className="chart-source">Source: <a href="https://artificialanalysis.ai/leaderboards/models" target="_blank" rel="noreferrer">Artificial Analysis</a> · Intelligence Index v{catalog.indexVersion ?? "?"} · {new Date(catalog.updatedAt).toLocaleDateString()}</span> : <span className="chart-source">Illustrative demo · Fixed September 2026 estimates · Not measured scores</span>}
             <span className="legend-marker" /> Farther from the center is better on every axis: lower cost per task reaches farther out. Values are relative to the selected models; missing Coding or Agentic scores are drawn at 0, not measured.
           </div>
         </section>
       </div>
 
-      <footer className="footer">{catalog?.source === "live" ? <>Data: <a href="https://artificialanalysis.ai/" target="_blank" rel="noreferrer">Artificial Analysis ↗</a> · Index v{catalog.indexVersion ?? "?"} · Updated {new Date(catalog.updatedAt).toLocaleDateString()}</> : "Sample data · Not real model scores"}</footer>
+      <footer className="footer">{catalog?.source === "live" ? <>Data: <a href="https://artificialanalysis.ai/" target="_blank" rel="noreferrer">Artificial Analysis ↗</a> · Index v{catalog.indexVersion ?? "?"} · Updated {new Date(catalog.updatedAt).toLocaleDateString()}</> : "Real model names · Illustrative estimates, not measured scores or costs"}</footer>
     </main>
     {keyModalOpen && createPortal(<ApiKeyModal onSubmit={submitKey} onClose={() => setKeyModalOpen(false)} />, document.body)}
     </>

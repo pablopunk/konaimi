@@ -1,21 +1,18 @@
 import "server-only";
-import { demoCatalog } from "./demo";
 import { parseModel, type Catalog } from "./models";
 
 const endpoint = "https://artificialanalysis.ai/api/v2/language/models/free";
-const refreshAfterMs = 6 * 60 * 60 * 1000;
-let lastGood: Catalog | null = null;
-let loading: Promise<Catalog> | null = null;
 
-async function fetchCatalog(key: string): Promise<Catalog> {
+export async function fetchCatalog(key: string): Promise<Catalog> {
   const models: Catalog["models"] = [];
   let version: number | null = null;
   for (let page = 1; page <= 20; page += 1) {
     const response = await fetch(`${endpoint}?page=${page}`, {
       headers: { "x-api-key": key },
-      next: { revalidate: 6 * 60 * 60 },
+      cache: "no-store",
       signal: AbortSignal.timeout(15_000),
     });
+    if (response.status === 401 || response.status === 403) throw new InvalidKeyError();
     if (!response.ok) throw new Error(`Artificial Analysis returned ${response.status}`);
     const body: unknown = await response.json();
     if (!body || typeof body !== "object") throw new Error("Invalid model list");
@@ -35,18 +32,4 @@ async function fetchCatalog(key: string): Promise<Catalog> {
   throw new Error("Model list exceeds 20 pages");
 }
 
-export async function getCatalog(): Promise<Catalog> {
-  const key = process.env.ARTIFICIAL_ANALYSIS_API_KEY;
-  if (!key) return demoCatalog;
-  if (lastGood && Date.now() - Date.parse(lastGood.updatedAt) < refreshAfterMs) return lastGood;
-  loading ??= fetchCatalog(key).then((catalog) => {
-    lastGood = catalog;
-    return catalog;
-  }).finally(() => { loading = null; });
-  try {
-    return await loading;
-  } catch (error) {
-    if (lastGood) return { ...lastGood, stale: true };
-    throw error;
-  }
-}
+export class InvalidKeyError extends Error {}

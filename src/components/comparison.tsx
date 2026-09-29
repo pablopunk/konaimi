@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { axes, canChartModel, chartPositions, hasCompleteStats } from "@/lib/compare";
 import { searchModels } from "@/lib/search";
 import { createTab, restoreTabs, type ComparisonTab } from "@/lib/tabs";
+import { apiKeyStorage, loadCatalog } from "@/lib/browser-catalog";
+import { ApiKeyModal } from "./api-key-modal";
 import { modelColor, Radar } from "./radar";
 import type { Catalog, Model } from "@/lib/models";
 
@@ -31,29 +34,33 @@ export function Comparison() {
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
+  const [keyModalOpen, setKeyModalOpen] = useState(false);
+
+  const showCatalog = (data: Catalog) => {
+    let savedTabs: string | null = null;
+    let oldSelection: string | null = null;
+    try {
+      savedTabs = localStorage.getItem(tabsKey(data.source));
+      oldSelection = localStorage.getItem(storageKey(data.source));
+    } catch {}
+    const restored = restoreTabs(savedTabs, oldSelection);
+    setTabs(restored.tabs);
+    setActiveTabId(restored.activeTabId);
+    setCatalog(data);
+    setReady(true);
+    setError("");
+  };
 
   useEffect(() => {
     let active = true;
-    fetch("/api/models").then(async (response) => {
-      if (!response.ok) throw new Error("The model list is not available right now.");
-      return await response.json() as Catalog;
-    }).then((data) => {
+    loadCatalog().then(async (demo) => {
       if (!active) return;
-      let savedTabs: string | null = null;
-      let oldSelection: string | null = null;
-      try {
-        savedTabs = localStorage.getItem(tabsKey(data.source));
-        oldSelection = localStorage.getItem(storageKey(data.source));
-      } catch {}
-      const restored = restoreTabs(
-        savedTabs,
-        oldSelection,
-        data.source === "demo" ? data.models.slice(0, 2).map((model) => model.id) : [],
-      );
-      setTabs(restored.tabs);
-      setActiveTabId(restored.activeTabId);
-      setCatalog(data);
-      setReady(true);
+      showCatalog(demo);
+      const key = localStorage.getItem(apiKeyStorage);
+      if (key) {
+        try { const live = await loadCatalog(key); if (active) showCatalog(live); }
+        catch { if (active) setError("Your saved API key could not load models. Enter it again."); }
+      }
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : "Could not load models.");
     });
@@ -75,7 +82,21 @@ export function Comparison() {
   const positions = chartPositions(chartable);
 
   const add = (id: string) => {
+    if (catalog?.source !== "live") { setKeyModalOpen(true); return; }
     if (!selectedIds.includes(id)) updateSelection((ids) => [...ids, id]);
+  };
+
+  const submitKey = async (key: string) => {
+    const data = await loadCatalog(key);
+    localStorage.setItem(apiKeyStorage, key);
+    showCatalog(data);
+    setQuery("");
+    setKeyModalOpen(false);
+  };
+
+  const forgetKey = async () => {
+    localStorage.removeItem(apiKeyStorage);
+    showCatalog(await loadCatalog());
   };
 
   const updateSelection = (update: (ids: string[]) => string[]) => {
@@ -105,7 +126,8 @@ export function Comparison() {
   };
 
   return (
-    <main className="app-shell">
+    <>
+    <main className="app-shell" inert={keyModalOpen}>
       <header className="site-header">
         <Link href="/" className="brand" aria-label="Konaimi home"><span className="brand-mark"><span className="brand-mark-letter">K</span></span><span>KON<span className="brand-ai">AI</span>MI<span className="brand-period">.</span></span></Link>
         <span className="header-tag">MODEL COMPARISON</span>
@@ -125,7 +147,8 @@ export function Comparison() {
         {ready && <button className="tab-add" onClick={addTab} aria-label="New comparison" title="New comparison">+</button>}
       </nav>
 
-      {catalog?.source === "demo" && <div className="notice demo-notice"><strong>DEMO MODE</strong><span>These are made-up models and numbers. Add an Artificial Analysis API key to use live data.</span></div>}
+      {catalog?.source === "demo" && <div className="notice demo-notice"><strong>DEMO MODE</strong><span>These are made-up models and numbers.</span><button onClick={() => setKeyModalOpen(true)}>Add your API key</button></div>}
+      {catalog?.source === "live" && <div className="key-management"><span>Using your own Artificial Analysis key</span><button onClick={forgetKey}>Forget key</button></div>}
       {catalog?.stale && <div className="notice"><strong>OLD DATA</strong><span>Latest refresh failed; showing the last complete model list.</span></div>}
       {error && <div className="notice error-notice" role="alert"><strong>DATA ERROR</strong><span>{error}</span><button onClick={() => window.location.reload()}>Try again</button></div>}
 
@@ -179,5 +202,7 @@ export function Comparison() {
 
       <footer className="footer">{catalog?.source === "live" ? <>Data: <a href="https://artificialanalysis.ai/" target="_blank" rel="noreferrer">Artificial Analysis ↗</a> · Index v{catalog.indexVersion ?? "?"} · Updated {new Date(catalog.updatedAt).toLocaleDateString()}</> : "Sample data · Not real model scores"}</footer>
     </main>
+    {keyModalOpen && createPortal(<ApiKeyModal onSubmit={submitKey} onClose={() => setKeyModalOpen(false)} />, document.body)}
+    </>
   );
 }
